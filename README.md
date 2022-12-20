@@ -9,3 +9,7 @@ Install pip packages
 Intstall pre-commit setting
 
 <code>pre-commit</code>
+
+Run pytest
+
+<code>pipenv run test
