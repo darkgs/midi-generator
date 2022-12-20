@@ -3,3 +3,5 @@ isort==5.11.3
 black==22.12.0
 flake8==6.0.0
 pylint==2.15.9
+pipenv==2022.12.19
+pytest==7.2.0
