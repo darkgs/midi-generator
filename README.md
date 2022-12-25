@@ -12,7 +12,7 @@ Intstall pre-commit setting
 
 Run pytest
 
-<code>pipenv run test</code>
+<code>pytest -v</code>
 
 ## Dataset
 ### GiantMIDI-Piano
