@@ -13,3 +13,9 @@ Intstall pre-commit setting
 Run pytest
 
 <code>pipenv run test</code>
+
+## Dataset
+### GiantMIDI-Piano
+Download <code>midis_v1.2.zip</code> from the official [website](https://github.com/bytedance/GiantMIDI-Piano).
+
+Unzip to <code>data/midis</code>.
