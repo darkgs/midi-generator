@@ -17,7 +17,9 @@ repos:
     rev: 22.12.0
     hooks:
     -   id: black
-        language_version: python3.8
+        language_version: python3
+        args:
+        - --line-length=120
 -   repo: https://github.com/PyCQA/flake8
     rev: 6.0.0
     hooks:
@@ -26,7 +28,9 @@ repos:
     rev: v2.15.9
     hooks:
     -   id: pylint
+        name: pylint
+        language: system
         args:
-        - --max-line-length=80
+        - --max-line-length=120
         - --ignore-imports=yes
         - -d duplicate-code

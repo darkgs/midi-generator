@@ -4,6 +4,8 @@ black==22.12.0
 flake8==6.0.0
 pylint==2.15.9
 pytest==7.2.0
+numpy==1.24.0
 torch==1.13.1
 torchaudio==0.13.1
 torchvision==0.14.1
+pretty-midi @ git+https://github.com/craffel/pretty-midi.git@c510b12270b2a62daa7a30af58fd33288e0feffd
