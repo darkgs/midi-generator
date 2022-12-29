@@ -3,19 +3,18 @@ from pathlib import Path
 from typing import List
 
 import pytest
-from pretty_midi import PrettyMIDI
 
 
-@pytest.fixture(name="midis_datas")
-def fxt_midis_datas() -> List[PrettyMIDI]:
+@pytest.fixture(name="fxt_midi_files", params=["tests/data/midis"])
+def fxt_midi_files(request: str) -> List[str]:
     """
     Pytest fixture of GiantMIDI dataset
 
     Parameters:
-        None
+        request: path to root dir of MIDI files
 
     Returns:
-        List[PrettyMIDI] - a list of PrettyMIDI objects
+        List[str] - list of path to MIDI files
     """
-    midis_data_home = "tests/data/midis"
-    return [PrettyMIDI(str(midi_path)) for midi_path in Path(midis_data_home).rglob("*.mid")]
+    midi_dir_path = request.param
+    return [str(midi_path) for midi_path in Path(midi_dir_path).rglob("*.mid")]
