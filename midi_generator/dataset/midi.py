@@ -1,9 +1,13 @@
 """Pytorch data loader for MIDI files"""
+import hashlib
+import os
+import pickle
 from enum import Enum, auto
 from typing import Dict, List, Optional
 
 import numpy as np
 import pypianoroll
+import tqdm
 from torch.utils.data import Dataset
 
 from midi_generator.utils.log import Log
@@ -48,11 +52,13 @@ class MIDIData:
         self,
         midi_path: Optional[str] = None,
         multi_track: Optional[pypianoroll.Multitrack] = None,
+        cache_home: Optional[str] = None,
     ):
         """
         Parameters:
             midi_path: str - path to a MIDI file
             multi_track: pypianoroll.Multitrack - multi_track object storing entire song
+            cache_home: Optional[str] - path to cache home
         Return:
             None
         """
@@ -62,13 +68,87 @@ class MIDIData:
         if midi_path is not None and multi_track is not None:
             Log.warning("MIDIData - both midi_path and multi_track are passed, ignore multi_track")
 
-        # Assign _multi_track from one of midi_path or multi_track
-        if midi_path:
-            multi_track = pypianoroll.read(midi_path)
+        # try to import the pianoroll of MIDI from the cache
+        self._pianorolls = self._try_pianorolls_from_cache(midi_path=midi_path, cache_home=cache_home)
 
-        self._pianorolls = self._extract_pianoroll(multi_track=multi_track)
+        # cache miss
+        if self._pianorolls is None:
+            # Assign _multi_track from one of midi_path or multi_track
+            if midi_path:
+                multi_track = pypianoroll.read(midi_path)
 
-    def _extract_pianoroll(self, multi_track: pypianoroll.Multitrack) -> Dict[INSTRUMENT, np.array]:
+            pianorolls = self._extract_pianorolls(multi_track=multi_track)
+            self._store_pianorolls_to_cache(midi_path=midi_path, cache_home=cache_home, pianorolls=pianorolls)
+            self._pianorolls = pianorolls
+
+    def _get_cache_path(self, midi_path: str, cache_home: str):
+        """
+        We store the pianoroll of MIDI by MD5 of MIDI path.
+
+        Parameters:
+            midi_path: str - path to a MIDI file
+            cache_home: str - path to home of cache
+
+        Returns:
+            str - {cache_home}/{md5 of MIDI path}.pkl
+        """
+        cache_path = f"{cache_home}/{hashlib.md5(midi_path.encode()).hexdigest()}.pkl"
+
+        return cache_path
+
+    def _try_pianorolls_from_cache(self, midi_path: str, cache_home: str) -> Dict[INSTRUMENT, np.array]:
+        """
+        Try to load the pianorolls of MIDI from cache.
+        We store the pianoroll of MIDI by MD5 of MIDI path.
+        the pianoroll object will be stored as .pkl
+
+        Parameters:
+            midi_path: str - path to a MIDI file
+            cache_home: str - path to home of cache
+
+        Returns:
+            Dict[INSTRUMENT, np.array] - if cache hit, pianoroll of the MIDI
+            None - if cache miss
+        """
+        if cache_home is None:
+            return None
+
+        cache_path = self._get_cache_path(midi_path=midi_path, cache_home=cache_home)
+
+        if os.path.isfile(cache_path):
+            with open(cache_path, "rb") as f_cache:
+                pianorolls = pickle.load(f_cache)
+            return pianorolls
+
+        return None
+
+    def _store_pianorolls_to_cache(
+        self, midi_path: str, cache_home: str, pianorolls: Dict[INSTRUMENT, np.array]
+    ) -> None:
+        """
+        Store the pianorolls of MIDI to cache.
+
+        Parameters:
+            midi_path: str - path to a MIDI file
+            cache_home: str - path to home of cache
+            pianorolls: Dict[INSRUMENT, np.array] - A dictionary of pianoroll mapping INSTRUMENT to pianoroll np.array
+
+        Returns:
+            None
+        """
+        if cache_home is None:
+            return
+
+        cache_path = self._get_cache_path(midi_path=midi_path, cache_home=cache_home)
+
+        # makedir if necessary
+        if not os.path.isdir(os.path.dirname(cache_path)):
+            os.makedirs(os.path.dirname(cache_path))
+
+        with open(cache_path, "wb+") as f_cache:
+            pickle.dump(pianorolls, f_cache)
+
+    def _extract_pianorolls(self, multi_track: pypianoroll.Multitrack) -> Dict[INSTRUMENT, np.array]:
         """
         Extract the pianorolls of MIDI from the multi_track.
         Each instrument has thier own pianoroll np.array of shape (-1, 128) representing (time, pitch).
@@ -126,15 +206,23 @@ class MIDIDataset(Dataset):
     _midis: List[MIDIData]
     _instruments: List[MIDIData.INSTRUMENT]
 
-    def __init__(self, midi_files: List[str], instruments: List[MIDIData.INSTRUMENT]):
+    def __init__(
+        self,
+        midi_files: List[str],
+        instruments: List[MIDIData.INSTRUMENT],
+        cache_home: Optional[str] = None,
+    ):
         """
         Parameters:
             midif_files: List[str] - A list of midi file paths
             instruments: List[MIDIData.INSTRUMENT]) - A list of instruments to be utilized on the futher processes
+            cache_home: Optional[str] - path to cache home
         """
         Dataset.__init__(self)
 
-        self._midis = [MIDIData(midi_path=midi_path) for midi_path in midi_files]
+        self._midis = []
+        for midi_path in tqdm.tqdm(midi_files, desc="Loading MIDI files"):
+            self._midis.append(MIDIData(midi_path=midi_path, cache_home=cache_home))
         self._instruments = instruments
 
         self.validate_data()

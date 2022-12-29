@@ -5,7 +5,7 @@ from typing import List
 import pytest
 
 
-@pytest.fixture(name="fxt_midi_files", params=["tests/data/midis"])
+@pytest.fixture(name="fxt_midi_files", params=["midi_generator/tests/data/midis"])
 def fxt_midi_files(request: str) -> List[str]:
     """
     Pytest fixture of GiantMIDI dataset
