@@ -75,6 +75,7 @@ class MIDIData:
         if self._pianorolls is None:
             # Assign _multi_track from one of midi_path or multi_track
             if midi_path:
+                # raises ValueError if MIDI is unable to be parsed
                 multi_track = pypianoroll.read(midi_path)
 
             pianorolls = self._extract_pianorolls(multi_track=multi_track)
@@ -222,7 +223,17 @@ class MIDIDataset(Dataset):
 
         self._midis = []
         for midi_path in tqdm.tqdm(midi_files, desc="Loading MIDI files"):
-            self._midis.append(MIDIData(midi_path=midi_path, cache_home=cache_home))
+            try:
+                midi_data = MIDIData(midi_path=midi_path, cache_home=cache_home)
+            except ValueError as exception:
+                midi_data = None
+                Log.warning(f"Error while loading {midi_path} - skip this file: {exception}")
+
+            if midi_data is None:
+                continue
+
+            self._midis.append(midi_data)
+
         self._instruments = instruments
 
         self.validate_data()

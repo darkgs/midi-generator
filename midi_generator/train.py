@@ -21,5 +21,5 @@ def main():
     train_dataloader = DataLoader(dataset)
 
     for _ in range(num_epoch):
-        for _, data in enumerate(train_dataloader):
-            print(data.shape)
+        for _, _ in enumerate(train_dataloader):
+            pass
