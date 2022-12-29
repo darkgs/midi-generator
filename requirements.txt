@@ -9,3 +9,4 @@ torch==1.13.1
 torchaudio==0.13.1
 torchvision==0.14.1
 pretty-midi @ git+https://github.com/craffel/pretty-midi.git@c510b12270b2a62daa7a30af58fd33288e0feffd
+pypianoroll==1.0.4

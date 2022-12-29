@@ -8,7 +8,7 @@ Install pip packages
 
 Intstall pre-commit setting
 
-<code>pre-commit</code>
+<code>pre-commit install</code>
 
 Run pytest
 
