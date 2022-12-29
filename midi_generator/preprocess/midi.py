@@ -4,6 +4,7 @@ from typing import Dict, List, Optional
 
 import numpy as np
 import pypianoroll
+from torch.utils.data import Dataset
 
 from midi_generator.utils.log import Log
 
@@ -83,7 +84,8 @@ class MIDIData:
         for track in multi_track.tracks:
             # program: int - [0, 127] that represents MIDI instruments.
             # we briefly uses 128 / 8 instruments by dividing program by 8
-            instrument: MIDIData.INSTRUMENT = track.program / 8 + 1
+            # note that the index of Enum starts from 1
+            instrument = MIDIData.INSTRUMENT(track.program / 8 + 1)
             if instrument in pianorolls:
                 Log.warning("Duplicated instruments found! we ignore the latter")
                 continue
@@ -114,3 +116,63 @@ class MIDIData:
             np.array - A pianoroll with shape of [time, pitch]
         """
         return self._pianorolls[instrument]
+
+
+class MIDIDataset(Dataset):
+    """
+    Pytorch Dataset implementation for MIDI data
+    """
+
+    _midis: List[MIDIData]
+    _instruments: List[MIDIData.INSTRUMENT]
+
+    def __init__(self, midi_files: List[str], instruments: List[MIDIData.INSTRUMENT]):
+        """
+        Parameters:
+            midif_files: List[str] - A list of midi file paths
+            instruments: List[MIDIData.INSTRUMENT]) - A list of instruments to be utilized on the futher processes
+        """
+        Dataset.__init__(self)
+
+        self._midis = [MIDIData(midi_path=midi_path) for midi_path in midi_files]
+        self._instruments = instruments
+
+        self.validate_data()
+
+    def validate_data(self):
+        """
+        Check if all MIDI data has necessary pianorolls for all instruments.
+
+        Parameters:
+            None - we check with this object's private variable, _midis and _instruments
+
+        Returns:
+            None - we trigger an exception imediately when found an error
+        """
+
+        for midi in self._midis:
+            for instrument in self._instruments:
+                if instrument in midi.get_instruments():
+                    continue
+                raise ValueError(f"Instrument {instrument.name} is missing in the MIDI of the dataset!")
+
+    def __len__(self):
+        """
+        Returns:
+            int - The length of this dataset
+        """
+        return len(self._midis)
+
+    def __getitem__(self, index: int) -> np.array:
+        """
+        Get an MIDIData item.
+
+        Parameters:
+            index: int - An index of item to get.
+
+        Returns:
+            np.array - A pianoroll np.array with the shape of [time, pitch, # instruments]
+        """
+        pianorolls = [self._midis[index].get_pianoroll(instrument=instrument) for instrument in self._instruments]
+
+        return np.stack(pianorolls, axis=2)
